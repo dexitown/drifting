@@ -620,28 +620,78 @@ async function loadFeed(){
     const avH=u.avatar?`<img src="${u.avatar}" alt=""/>`:`<div class="post-av-ph">${(u.name||u.username||'?').charAt(0)}</div>`;
     const div=document.createElement('div');
     div.className='post';
-    div.innerHTML=`
-      <div class="post-head">
-        <div class="post-av" onclick="goToUser('${p.uid}')">${avH}</div>
-        <span class="post-user" onclick="goToUser('${p.uid}')">${u.username}</span>
-        <span class="post-time">${ago(p.timestamp)}</span>
-      </div>
-      <div class="post-img-wrap" onclick="openLightbox(this.querySelector('img').src)">
-        <img class="post-img" src="${p.imageUrl}" loading="lazy" alt=""/>
-      </div>
-      <div class="post-actions">
-        <button class="act" id="sv-${p.id}" onclick="toggleSave('${p.id}',this)">
-          <svg viewBox="0 0 24 24"><path id="svp-${p.id}" d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/></svg>
-        </button>
-        <button class="act" onclick="openCmts('${p.id}')">
-          <svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>
-        </button>
-        <button class="act" onclick="dlPhoto('${p.imageUrl}')">
-          <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-        </button>
-        ${isMine?`<button class="act red" onclick="deletePost('${p.id}')" style="margin-left:auto"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`:''}
-      </div>
-      ${p.caption?`<div class="post-cap"><span class="post-cap-name">${u.name||u.username}</span><span class="post-cap-text">${p.caption}</span></div>`:''}`;
+    // build post using DOM to avoid template literal issues
+    div.dataset.uid = p.uid;
+    div.dataset.pid = p.id;
+
+    const head = document.createElement('div');
+    head.className = 'post-head';
+    const av = document.createElement('div');
+    av.className = 'post-av';
+    av.innerHTML = avH;
+    av.onclick = ()=>goToUser(p.uid);
+    const uname = document.createElement('span');
+    uname.className = 'post-user';
+    uname.textContent = u.username||'usuario';
+    uname.onclick = ()=>goToUser(p.uid);
+    const ts = document.createElement('span');
+    ts.className = 'post-time';
+    ts.textContent = ago(p.timestamp);
+    head.appendChild(av); head.appendChild(uname); head.appendChild(ts);
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'post-img-wrap';
+    const img = document.createElement('img');
+    img.className = 'post-img';
+    img.src = p.imageUrl;
+    img.loading = 'lazy';
+    imgWrap.appendChild(img);
+    imgWrap.onclick = ()=>openLightbox(p.imageUrl);
+
+    const acts = document.createElement('div');
+    acts.className = 'post-actions';
+
+    const savBtn = document.createElement('button');
+    savBtn.className = 'act';
+    savBtn.id = 'sv-'+p.id;
+    savBtn.innerHTML = '<svg viewBox="0 0 24 24"><path id="svp-'+p.id+'" d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/></svg>';
+    savBtn.onclick = ()=>toggleSave(p.id, savBtn);
+
+    const cmtBtn = document.createElement('button');
+    cmtBtn.className = 'act';
+    cmtBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>';
+    cmtBtn.onclick = ()=>openCmts(p.id);
+
+    const dlBtn = document.createElement('button');
+    dlBtn.className = 'act';
+    dlBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>';
+    dlBtn.onclick = ()=>dlPhoto(p.imageUrl);
+
+    acts.appendChild(savBtn); acts.appendChild(cmtBtn); acts.appendChild(dlBtn);
+
+    if(isMine){
+      const delBtn = document.createElement('button');
+      delBtn.className = 'act red';
+      delBtn.style.marginLeft = 'auto';
+      delBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+      delBtn.onclick = ()=>deletePost(p.id);
+      acts.appendChild(delBtn);
+    }
+
+    div.appendChild(head); div.appendChild(imgWrap); div.appendChild(acts);
+
+    if(p.caption){
+      const cap = document.createElement('div');
+      cap.className = 'post-cap';
+      const capName = document.createElement('span');
+      capName.className = 'post-cap-name';
+      capName.textContent = u.name||u.username||'';
+      const capText = document.createElement('span');
+      capText.className = 'post-cap-text';
+      capText.textContent = p.caption;
+      cap.appendChild(capName); cap.appendChild(capText);
+      div.appendChild(cap);
+    }
     container.appendChild(div);
     if(window.ME_UID){
       get(ref(db,'saves/'+p.id+'/'+window.ME_UID)).then(s=>{
